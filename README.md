@@ -1,1 +1,1 @@
-# mapper
+# Mapper algorithm
