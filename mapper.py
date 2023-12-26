@@ -10,17 +10,6 @@ import gudhi
 import itertools
 
 
-def filter(data, lens="PCA"):
-    lenses = {"PCA": PCA, "t-SNE": TSNE}
-    return lenses[lens](n_components=2).fit_transform(data)
-
-
-def cluster(data, algorithm="DBSCAN", dbscan_eps=4.4, dbscan_min_samples=5, **kwargs):
-    algorithms = {"DBSCAN": DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples),
-                  "AC": AgglomerativeClustering()}
-    return algorithms[algorithm].fit_predict(data)
-
-
 def read3d(path):
     plydata = PlyData.read(path)
     data = np.array([list(v) for v in plydata.elements[0].data])
@@ -43,8 +32,10 @@ def generate_intervals(projected_data, overlap_factor):
     min_val, max_val = np.min(projected_data[:, 1]), np.max(projected_data[:, 1])
     interval_width = (max_val - min_val) / num_intervals
     overlap = int(overlap_factor * interval_width)
-    intervals = [(min_val + i * interval_width, min_val + (i + 1) * interval_width + overlap) for i in
-                 range(num_intervals)]
+    intervals = [
+        (min_val + i * interval_width, min_val + (i + 1) * interval_width + overlap)
+        for i in range(num_intervals)
+    ]
     return intervals
 
 
@@ -52,54 +43,67 @@ def plot_interval_points(pts, colors, order=None):
     if order is None:
         order = (1, 2, 3)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
     for i, partition in enumerate(pts):
         partition_array = np.array(partition)
         x = partition_array[:, order[0]]
         y = partition_array[:, order[1]]
         z = partition_array[:, order[2]]
-        ax.scatter(x, y, z, label=f'Partition {i + 1}', color=colors[i])
+        ax.scatter(x, y, z, label=f"Partition {i + 1}", color=colors[i])
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('3D Points')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("3D Points")
     ax.legend()
 
     plt.tight_layout()
     plt.show()
 
 
-def plot_interval_points_with_clusters(pts, cluster_labels, colors, order=None, markers=None):
+def plot_interval_points_with_clusters(
+    pts, cluster_labels, colors, order=None, markers=None
+):
     if order is None:
         order = (0, 1, 2)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
     c = 0
     for i, (partition, labels) in enumerate(zip(pts, cluster_labels)):
         partition_array = np.array(partition)
         for j, cluster_label in enumerate(np.unique(labels)):
             cluster_points = partition_array[labels == cluster_label]
 
-            ax.scatter(cluster_points[:, order[0]], cluster_points[:, order[1]], cluster_points[:, order[2]],
-                       label=f'Partition {i + 1}, Cluster {cluster_label + 1}',
-                       color=colors[c], marker=markers[c] if markers else None)
+            ax.scatter(
+                cluster_points[:, order[0]],
+                cluster_points[:, order[1]],
+                cluster_points[:, order[2]],
+                label=f"Partition {i + 1}, Cluster {cluster_label + 1}",
+                color=colors[c],
+                marker=markers[c] if markers else None,
+            )
             c += 1
-    ax.set_title('Object 3D plot with partitions and clusters')
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_zlabel('Z-axis')
-    plt.legend(prop={'size': 7})
+    ax.set_title("Object 3D plot with partitions and clusters")
+    ax.set_xlabel("X-axis")
+    ax.set_ylabel("Y-axis")
+    ax.set_zlabel("Z-axis")
+    plt.legend(prop={"size": 7})
     plt.tight_layout()
     plt.show()
 
 
 def plot_mapper(graph, palette):
-    nx.draw_spring(graph, with_labels=True, node_color=palette, font_weight='bold', node_size=500,
-                   font_color='black',
-                   font_size=10)
-    plt.title('Mapper graph')
+    nx.draw_spring(
+        graph,
+        with_labels=True,
+        node_color=palette,
+        font_weight="bold",
+        node_size=500,
+        font_color="black",
+        font_size=10,
+    )
+    plt.title("Mapper graph")
     plt.show()
 
 
@@ -136,19 +140,42 @@ def draw_2d_simplicial_complex(simplices, pos=None, return_pos=False, ax=None):
     nodes = list(set(itertools.chain(*simplices)))
 
     # List of 1-simplices
-    edges = list(set(itertools.chain(
-        *[[tuple(sorted((i, j))) for i, j in itertools.combinations(simplex, 2)] for simplex in simplices])))
+    edges = list(
+        set(
+            itertools.chain(
+                *[
+                    [
+                        tuple(sorted((i, j)))
+                        for i, j in itertools.combinations(simplex, 2)
+                    ]
+                    for simplex in simplices
+                ]
+            )
+        )
+    )
 
     # List of 2-simplices
-    triangles = list(set(itertools.chain(
-        *[[tuple(sorted((i, j, k))) for i, j, k in itertools.combinations(simplex, 3)] for simplex in simplices])))
+    triangles = list(
+        set(
+            itertools.chain(
+                *[
+                    [
+                        tuple(sorted((i, j, k)))
+                        for i, j, k in itertools.combinations(simplex, 3)
+                    ]
+                    for simplex in simplices
+                ]
+            )
+        )
+    )
 
-    if ax is None: ax = plt.gca()
+    if ax is None:
+        ax = plt.gca()
     ax.set_xlim([-1.1, 1.1])
     ax.set_ylim([-1.1, 1.1])
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
-    ax.axis('off')
+    ax.axis("off")
 
     if pos is None:
         # Creating a networkx Graph from the edgelist
@@ -161,7 +188,7 @@ def draw_2d_simplicial_complex(simplices, pos=None, return_pos=False, ax=None):
     for i, j in edges:
         (x0, y0) = pos[i]
         (x1, y1) = pos[j]
-        line = plt.Line2D([x0, x1], [y0, y1], color='black', zorder=1, lw=0.7)
+        line = plt.Line2D([x0, x1], [y0, y1], color="black", zorder=1, lw=0.7)
         ax.add_line(line)
 
     # Filling in the triangles
@@ -169,16 +196,27 @@ def draw_2d_simplicial_complex(simplices, pos=None, return_pos=False, ax=None):
         (x0, y0) = pos[i]
         (x1, y1) = pos[j]
         (x2, y2) = pos[k]
-        tri = plt.Polygon([[x0, y0], [x1, y1], [x2, y2]],
-                          edgecolor='black', facecolor=plt.cm.Blues(0.6),
-                          zorder=2, alpha=0.4, lw=0.5)
+        tri = plt.Polygon(
+            [[x0, y0], [x1, y1], [x2, y2]],
+            edgecolor="black",
+            facecolor=plt.cm.Blues(0.6),
+            zorder=2,
+            alpha=0.4,
+            lw=0.5,
+        )
         ax.add_patch(tri)
 
     # Drawing the nodes
     for i in nodes:
         (x, y) = pos[i]
-        circ = plt.Circle([x, y], radius=0.02, zorder=3, lw=0.5,
-                          edgecolor='Black', facecolor=u'#ff7f0e')
+        circ = plt.Circle(
+            [x, y],
+            radius=0.02,
+            zorder=3,
+            lw=0.5,
+            edgecolor="Black",
+            facecolor="#ff7f0e",
+        )
         ax.add_patch(circ)
 
     if return_pos:
@@ -207,8 +245,110 @@ def find_triangles(edges):
     return triangles
 
 
-if __name__ == '__main__':
-    data3d = read3d("data/table.ply")
+# MEASUREMENT FUNCTIONS
+
+
+# returns function which returns which takes a point cloud and returns given axis values
+def axis(axis):
+    return lambda data: data[:, axis]
+
+
+# reduces point cloud to 1 dim with PCA
+def pca(data):
+    return PCA(n_components=1).fit_transform(data)
+
+
+# reduces point cloud to 1 dim with t-SNE
+def t_sne(data):
+    return TSNE(n_components=1).fit_transform(data)
+
+
+# returns distances of every point to centroid
+def centroid_dist(data):
+    centroid = np.mean(data, axis=0)
+    diff = data - centroid
+    return np.sqrt(
+        np.power(diff[:, 0], 2) + np.power(diff[:, 1], 2) + np.power(diff[:, 2], 2)
+    )
+
+
+# applies given measurement function to given point cloud and returns measurements for every point
+def apply_measurement_function(data, function="axis0"):
+    functions = {
+        "axis0": axis(0),
+        "axis1": axis(1),
+        "axis2": axis(2),
+        "PCA": pca,
+        "t-SNE": t_sne,
+        "radial": centroid_dist,
+    }
+    return functions[function](data)
+
+
+# partitions data into n groups based on measures of points
+def partition(data, measures, n=None, overlap=0.2):
+    n = int(np.log(data.shape[0])) if n == None else n
+
+    max_ = np.max(measures)
+    min_ = np.min(measures)
+
+    overlap_size = overlap * (max_ - min_) / n
+
+    intervals = np.linspace(min_, max_, n + 1)
+    partitions = [None] * n
+    for i in range(n):
+        a = intervals[i]
+        b = intervals[i + 1]
+        points = []
+        for point, measure in zip(data, measures):
+            if a - overlap_size < measure < b + overlap_size:
+                points.append(point)
+        partitions[i] = np.array(points)
+
+    return partitions
+
+
+# plots partitioned data
+def plot_partitions(partitions):
+    ax = plt.axes(projection="3d")
+    for p in partitions:
+        x = p.T[0]
+        z = p.T[1]
+        y = p.T[2]
+
+        # plotting
+        ax.scatter(x, y, z, alpha=0.5)
+        ax.set_title("Partitioned 3D object")
+    plt.show()
+
+
+# returns partitions of point cloud with given measurement function
+def partition_data(
+    data, measurement_function="PCA", n_partitions=None, overlap=0.2, plot=False
+):
+    measures = apply_measurement_function(data, function=measurement_function)
+    partitions = partition(data, measures, n=n_partitions, overlap=overlap)
+    if plot:
+        plot_partitions(partitions)
+    return partitions
+
+
+# plot 3d object
+def plot3d(data):
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+
+    x = data.T[0]
+    z = data.T[1]
+    y = data.T[2]
+
+    ax.scatter(x, y, z, "green")
+    ax.set_title("3D plot")
+    plt.show()
+
+
+if __name__ == "__main__":
+    """data3d = read3d("data/table.ply")
     # Reduce density
     data3d = data3d[::10]
 
@@ -226,9 +366,9 @@ if __name__ == '__main__':
     # Plotting 3d object
     ax.scatter(x, y, z, "green")
     ax.set_title("Object 3D plot")
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_zlabel('Z-axis')
+    ax.set_xlabel("X-axis")
+    ax.set_ylabel("Y-axis")
+    ax.set_zlabel("Z-axis")
     plt.show()
 
     # Get 2d data using filter
@@ -237,8 +377,8 @@ if __name__ == '__main__':
     # Plot 2d object
     plt.scatter(data2d[:, 0], data2d[:, 1])
     plt.title("Object 2D plot")
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
     plt.show()
 
     num_intervals = 5
@@ -260,10 +400,14 @@ if __name__ == '__main__':
     axis = 0
     for i in range(num_intervals):
         # Compute True/False mask identifying the points that are inside current interval i
-        interval_mask = (data2d[:, axis] >= intervals[i][0]) & (data2d[:, axis] < intervals[i][1])
+        interval_mask = (data2d[:, axis] >= intervals[i][0]) & (
+            data2d[:, axis] < intervals[i][1]
+        )
         interval_indices = [index for index, value in enumerate(interval_mask) if value]
         interval_points = data3d[interval_mask]
-        clusters = cluster(interval_points, algorithm='AC', dbscan_eps=0.5, dbscan_min_samples=5)
+        clusters = cluster(
+            interval_points, algorithm="AC", dbscan_eps=0.5, dbscan_min_samples=5
+        )
         make_partitions(clusters, interval_indices, all_partitions)
 
         interval_pts.append(interval_points)
@@ -279,8 +423,12 @@ if __name__ == '__main__':
     # 3d plotting functions with specified order of axes
     plot_interval_points(interval_pts, palette, order=(0, 1, 2))
     plot_interval_points(interval_pts, palette, order=(1, 0, 2))
-    plot_interval_points_with_clusters(interval_pts, cluster_sets, cluster_palette, order=(0, 1, 2))
-    plot_interval_points_with_clusters(interval_pts, cluster_sets, cluster_palette, order=(1, 0, 2))
+    plot_interval_points_with_clusters(
+        interval_pts, cluster_sets, cluster_palette, order=(0, 1, 2)
+    )
+    plot_interval_points_with_clusters(
+        interval_pts, cluster_sets, cluster_palette, order=(1, 0, 2)
+    )
 
     # Create Mapper graph
     # - each cluster is a node
@@ -313,4 +461,15 @@ if __name__ == '__main__':
     plt.show()
     # Plot persistent homology diagram
     gudhi.plot_persistence_barcode(persistence)
-    plt.show()
+    plt.show()"""
+
+    data = read3d("data/table.ply")
+
+    # reduce density
+    data = data[::20]
+    plot3d(data)
+
+    # possible measurement functions: 'axis0', 'axis1', 'axis2', 'PCA', 't-SNE', 'radial'
+    partitions = partition_data(
+        data, measurement_function="radial", n_partitions=None, overlap=0.2, plot=True
+    )
