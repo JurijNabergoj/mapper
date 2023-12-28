@@ -9,9 +9,14 @@ from sklearn.cluster import DBSCAN, AgglomerativeClustering
 import seaborn as sns
 
 
-def cluster(data, algorithm="DBSCAN", dbscan_eps=4.4, dbscan_min_samples=5):
-    algorithms = {"DBSCAN": DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples),
-                  "AC": AgglomerativeClustering()}
+def cluster(data, algorithm="DBSCAN", dbscan_eps=5, dbscan_min_samples=10):
+    algorithms = {
+        "DBSCAN": DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples),
+        "AC": AgglomerativeClustering(),
+        "AC2": AgglomerativeClustering(
+            n_clusters=None, distance_threshold=10, compute_full_tree=True
+        ),
+    }
     return algorithms[algorithm].fit_predict(data)
 
 
@@ -56,7 +61,7 @@ def plot_interval_points(pts, colors, order=None):
 
 
 def plot_interval_points_with_clusters(
-        pts, cluster_labels, colors, order=None, markers=None
+    pts, cluster_labels, colors, order=None, markers=None
 ):
     if order is None:
         order = (0, 1, 2)
@@ -88,7 +93,7 @@ def plot_interval_points_with_clusters(
 
 def plot_mapper(graph, palette):
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
     pos = nx.spring_layout(graph, dim=3)
     for node, (x, y, z) in pos.items():
         ax.scatter(x, y, z, color=palette[node - 1], s=50, label=str(node))
@@ -96,7 +101,7 @@ def plot_mapper(graph, palette):
         x = [pos[edge[0]][0], pos[edge[1]][0]]
         y = [pos[edge[0]][1], pos[edge[1]][1]]
         z = [pos[edge[0]][2], pos[edge[1]][2]]
-        ax.plot(x, y, z, color='black')
+        ax.plot(x, y, z, color="black")
     for node, (x, y, z) in pos.items():
         ax.text(x, y, z, str(node), fontsize=10, color="black")
 
@@ -208,7 +213,7 @@ def plot_partitions(partitions):
 
 # returns partitions of point cloud with given measurement function
 def partition_data(
-        data, measurement_function="PCA", n_partitions=None, overlap=0.2, plot=False
+    data, measurement_function="t-SNE", n_partitions=None, overlap=0.2, plot=False
 ):
     measures = apply_measurement_function(data, function=measurement_function)
     partitions, indices = partition(data, measures, n=n_partitions, overlap=overlap)
@@ -237,8 +242,10 @@ def compute_clusters(partitions, partition_indices):
     cluster_sets = []
     for i in range(len(partitions)):
         partition_points = partitions[i]
-        curr_clusters = cluster(partition_points, algorithm="AC")
-        store_clusters(curr_clusters, partition_indices[i], all_clusters, all_cluster_indices)
+        curr_clusters = cluster(partition_points, algorithm="DBSCAN")
+        store_clusters(
+            curr_clusters, partition_indices[i], all_clusters, all_cluster_indices
+        )
         cluster_sets.append(curr_clusters)
     return all_clusters, all_cluster_indices, cluster_sets
 
@@ -268,18 +275,20 @@ def generate_graph(all_clusters, all_cluster_indices):
 
 
 if __name__ == "__main__":
-    data = read3d("data/table.ply")
+    data = read3d("data/torus2.ply")
 
     # reduce density
-    data = data[::20]
+    data = data[::1]
     plot3d(data)
 
     # possible measurement functions: 'axis0', 'axis1', 'axis2', 'PCA', 't-SNE', 'radial'
     partitions, partition_indices = partition_data(
-        data, measurement_function="axis0", n_partitions=None, overlap=0.2, plot=True
+        data, measurement_function="t-SNE", n_partitions=6, overlap=0.2, plot=True
     )
     # Compute clusters for each partition
-    all_clusters, all_cluster_indices, cluster_sets = compute_clusters(partitions, partition_indices)
+    all_clusters, all_cluster_indices, cluster_sets = compute_clusters(
+        partitions, partition_indices
+    )
 
     # Get colors for plotting partitions and clusters
     palette, cluster_palette = get_colors_palettes(len(partitions), cluster_sets)
@@ -289,8 +298,12 @@ if __name__ == "__main__":
     plot_interval_points(partitions, palette, order=(1, 0, 2))
 
     # 3d cluster plot with specified order of axes
-    plot_interval_points_with_clusters(partitions, cluster_sets, cluster_palette, order=(0, 1, 2))
-    plot_interval_points_with_clusters(partitions, cluster_sets, cluster_palette, order=(1, 0, 2))
+    plot_interval_points_with_clusters(
+        partitions, cluster_sets, cluster_palette, order=(0, 1, 2)
+    )
+    plot_interval_points_with_clusters(
+        partitions, cluster_sets, cluster_palette, order=(1, 0, 2)
+    )
 
     # Generate Mapper graph
     graph = generate_graph(all_clusters, all_cluster_indices)
@@ -299,7 +312,7 @@ if __name__ == "__main__":
     plot_mapper(graph, cluster_palette)
 
     # UNFINISHED
-    '''
+    """
     triangles = find_triangles(list(graph.edges))
     
     # Convert to gudhi simplex tree
@@ -317,4 +330,4 @@ if __name__ == "__main__":
     # Plot persistent homology diagram
     gudhi.plot_persistence_barcode(persistence)
     plt.show()
-    '''
+    """
