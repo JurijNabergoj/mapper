@@ -7,6 +7,7 @@ from plyfile import PlyData
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN, AgglomerativeClustering
 import seaborn as sns
+import math
 
 
 def cluster(data, algorithm="DBSCAN", dbscan_eps=5, dbscan_min_samples=10):
@@ -213,7 +214,7 @@ def plot_partitions(partitions):
 
 # returns partitions of point cloud with given measurement function
 def partition_data(
-    data, measurement_function="t-SNE", n_partitions=None, overlap=0.2, plot=False
+    data, measurement_function="PCA", n_partitions=None, overlap=0.2, plot=False
 ):
     measures = apply_measurement_function(data, function=measurement_function)
     partitions, indices = partition(data, measures, n=n_partitions, overlap=overlap)
@@ -274,16 +275,71 @@ def generate_graph(all_clusters, all_cluster_indices):
     return graph
 
 
-if __name__ == "__main__":
-    data = read3d("data/torus2.ply")
+def twin_torus():
+    m = 50
+    n = 20
+    distance = 10
+    r_big = distance / 2
+    r_small = 2
+    centre1 = np.array([-distance / 2, 0, 0])
+    centre2 = np.array([distance / 2, 0, 0])
+    torus1 = []
+    torus2 = []
+    for i in range(m):
+        phi = i / m * 2 * math.pi
+        for j in range(n):
+            psi = j / n * 2 * math.pi
+            x = r_big * math.cos(phi) + r_small * math.cos(phi) * math.cos(psi)
+            y = r_big * math.sin(phi) + r_small * math.sin(phi) * math.cos(psi)
+            z = r_small * math.sin(psi)
+            print(phi, psi)
+            print(x, y, z)
+            if True:
+                torus1.append(centre1 + np.array([x, y, z]))
+            if True:
+                torus2.append(centre2 + np.array([x, y, z]))
+        print("\n")
+    torus1.extend(torus2)
+    return np.array(torus1)
 
+
+def k_torus(k=1):
+    m = 50
+    n = 15
+    distance = 10
+    r_big = distance / 2
+    r_small = 2
+    centres = np.array([[distance * i, 0, 0] for i in range(k)])
+    tori = [[]] * n
+    for i in range(m):
+        phi = i / m * 2 * math.pi
+        for j in range(n):
+            psi = j / n * 2 * math.pi
+            x = r_big * math.cos(phi) + r_small * math.cos(phi) * math.cos(psi)
+            y = r_big * math.sin(phi) + r_small * math.sin(phi) * math.cos(psi)
+            z = r_small * math.sin(psi)
+            print(phi, psi)
+            print(x, y, z)
+            for l in range(k):
+                tori[l].append(centres[l] + np.array([x, y, z]))
+        print("\n")
+    joined = []
+    for i in range(k):
+        joined = joined + tori[i]
+    return np.array(joined)
+
+
+if __name__ == "__main__":
+    # data = read3d("data/table.ply")
+
+    data = k_torus(3)
     # reduce density
     data = data[::1]
     plot3d(data)
 
     # possible measurement functions: 'axis0', 'axis1', 'axis2', 'PCA', 't-SNE', 'radial'
     partitions, partition_indices = partition_data(
-        data, measurement_function="t-SNE", n_partitions=6, overlap=0.2, plot=True
+        data, measurement_function="PCA", n_partitions=25, overlap=0.15, plot=True
     )
     # Compute clusters for each partition
     all_clusters, all_cluster_indices, cluster_sets = compute_clusters(
