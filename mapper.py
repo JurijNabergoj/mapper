@@ -11,6 +11,9 @@ import math
 
 
 def cluster(data, algorithm="DBSCAN", dbscan_eps=5, dbscan_min_samples=10):
+    if data.shape[0] == 0:
+        return np.array([])
+
     algorithms = {
         "DBSCAN": DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples),
         "AC": AgglomerativeClustering(),
@@ -21,9 +24,11 @@ def cluster(data, algorithm="DBSCAN", dbscan_eps=5, dbscan_min_samples=10):
     return algorithms[algorithm].fit_predict(data)
 
 
-def read3d(path):
+def read3d(path, density=1, resize=1):
     plydata = PlyData.read(path)
-    data = np.array([list(v) for v in plydata.elements[0].data])
+    data = resize * (
+        np.array([list(v) for v in plydata.elements[0].data])[:: int(1 / density)]
+    )
     return data
 
 
@@ -45,19 +50,21 @@ def plot_interval_points(pts, colors, order=None):
     ax = fig.add_subplot(111, projection="3d")
 
     for i, partition in enumerate(pts):
-        partition_array = np.array(partition)
-        x = partition_array[:, order[0]]
-        y = partition_array[:, order[1]]
-        z = partition_array[:, order[2]]
-        ax.scatter(x, y, z, label=f"Partition {i + 1}", color=colors[i])
+        if partition.shape[0] != 0:
+            partition_array = np.array(partition)
+            x = partition_array[:, order[0]]
+            y = partition_array[:, order[1]]
+            z = partition_array[:, order[2]]
+            ax.scatter(x, y, z, label=f"Partition {i + 1}", color=colors[i])
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
-    ax.set_title("3D Points")
-    ax.legend()
+    ax.set_title("Partitioned 3D Points")
+    # ax.legend()
 
     plt.tight_layout()
+    set_axes_equal(ax)
     plt.show()
 
 
@@ -87,8 +94,9 @@ def plot_interval_points_with_clusters(
     ax.set_xlabel("X-axis")
     ax.set_ylabel("Y-axis")
     ax.set_zlabel("Z-axis")
-    plt.legend(prop={"size": 7})
+    # plt.legend(prop={"size": 7})
     plt.tight_layout()
+    set_axes_equal(ax)
     plt.show()
 
 
@@ -106,28 +114,8 @@ def plot_mapper(graph, pos, palette):
         ax.text(x, y, z, str(node), fontsize=10, color="black")
 
     plt.title("Mapper graph")
+    set_axes_equal(ax)
     plt.show()
-
-
-def find_triangles(edges):
-    triangles = []
-    for i in range(len(edges)):
-        edge1 = edges[i]
-        for j in range(i + 1, len(edges)):
-            edge2 = edges[j]
-            if edge1 != edge2:
-                common_vertex12 = set(edge1) & set(edge2)
-                v1 = (set(edge1) - common_vertex12).pop()
-                v2 = (set(edge2) - common_vertex12).pop()
-                if len(common_vertex12) == 1:
-                    for k in range(j + 1, len(edges)):
-                        edge3 = edges[k]
-                        if edge1 != edge3 and edge2 != edge3:
-                            if v1 in set(edge3) and v2 in set(edge3):
-                                triangle = [common_vertex12.pop(), v1, v2]
-                                if triangle not in triangles:
-                                    triangles.append(triangle)
-    return triangles
 
 
 # MEASUREMENT FUNCTIONS
@@ -201,9 +189,13 @@ def partition(data, measures, n=None, overlap=0.2):
 def plot_partitions(partitions):
     ax = plt.axes(projection="3d")
     for p in partitions:
-        x = p.T[0]
-        z = p.T[1]
-        y = p.T[2]
+        # if parition is empty then pass
+        if p.shape[0] == 0:
+            pass
+        else:
+            x = p.T[0]
+            z = p.T[1]
+            y = p.T[2]
 
         # plotting
         ax.scatter(x, y, z, alpha=0.5)
@@ -222,6 +214,27 @@ def partition_data(
     return partitions, indices
 
 
+def set_axes_equal(ax):
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    # The plot bounding box is a sphere in the sense of the infinity
+    # norm, hence I call half the max range the plot radius.
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+
 # plot 3d object
 def plot3d(data):
     fig = plt.figure()
@@ -233,16 +246,17 @@ def plot3d(data):
 
     ax.scatter(x, y, z, "green")
     ax.set_title("3D plot")
+    set_axes_equal(ax)
     plt.show()
 
 
-def compute_clusters(partitions, partition_indices):
+def compute_clusters(partitions, partition_indices, algorithm="DBSCAN"):
     all_clusters = []
     all_cluster_indices = []
     cluster_sets = []
     for i in range(len(partitions)):
         partition_points = partitions[i]
-        curr_clusters = cluster(partition_points, algorithm="DBSCAN")
+        curr_clusters = cluster(partition_points, algorithm=algorithm)
         store_clusters(
             curr_clusters, partition_indices[i], all_clusters, all_cluster_indices
         )
@@ -293,13 +307,13 @@ def twin_torus():
             x = r_big * math.cos(phi) + r_small * math.cos(phi) * math.cos(psi)
             y = r_big * math.sin(phi) + r_small * math.sin(phi) * math.cos(psi)
             z = r_small * math.sin(psi)
-            print(phi, psi)
-            print(x, y, z)
+            # print(phi, psi)
+            # print(x, y, z)
             if True:
                 torus1.append(centre1 + np.array([x, y, z]))
             if True:
                 torus2.append(centre2 + np.array([x, y, z]))
-        print("\n")
+        # print("\n")
     torus1.extend(torus2)
     return np.array(torus1)
 
@@ -319,32 +333,38 @@ def k_torus(k=1):
             x = r_big * math.cos(phi) + r_small * math.cos(phi) * math.cos(psi)
             y = r_big * math.sin(phi) + r_small * math.sin(phi) * math.cos(psi)
             z = r_small * math.sin(psi)
-            print(phi, psi)
-            print(x, y, z)
+            # print(phi, psi)
+            # print(x, y, z)
             for l in range(k):
                 tori[l].append(centres[l] + np.array([x, y, z]))
-        print("\n")
+        # print("\n")
     joined = []
     for i in range(k):
         joined = joined + tori[i]
     return np.array(joined)
 
 
-if __name__ == "__main__":
-    # data = read3d("data/table.ply")
+def join_shapes(shape1, shape2, loc1, loc2):
+    shape1 = loc1 + shape1
+    shape2 = loc2 + shape2
+    return np.concatenate((shape1, shape2))
 
-    data = k_torus(3)
+
+if __name__ == "__main__":
+    table = read3d("data/table.ply", density=0.2, resize=0.15)
+
+    data = join_shapes(k_torus(1), table, np.array([0, -10, 0]), np.array([0, 10, 0]))
     # reduce density
-    data = data[::1]
+    # data = data[::1]
     plot3d(data)
 
     # possible measurement functions: 'axis0', 'axis1', 'axis2', 'PCA', 't-SNE', 'radial'
     partitions, partition_indices = partition_data(
-        data, measurement_function="PCA", n_partitions=25, overlap=0.15, plot=True
+        data, measurement_function="PCA", n_partitions=40, overlap=0.15, plot=True
     )
     # Compute clusters for each partition
     all_clusters, all_cluster_indices, cluster_sets = compute_clusters(
-        partitions, partition_indices
+        partitions, partition_indices, algorithm="AC"
     )
 
     # Get colors for plotting partitions and clusters
@@ -352,39 +372,27 @@ if __name__ == "__main__":
 
     # 3d partition plot with specified order of axes
     plot_interval_points(partitions, palette, order=(0, 1, 2))
-    plot_interval_points(partitions, palette, order=(1, 0, 2))
 
     # 3d cluster plot with specified order of axes
     plot_interval_points_with_clusters(
         partitions, cluster_sets, cluster_palette, order=(0, 1, 2)
     )
-    plot_interval_points_with_clusters(
-        partitions, cluster_sets, cluster_palette, order=(1, 0, 2)
-    )
-
     # Generate Mapper graph
     graph, centroid_positions = generate_graph(all_clusters, all_cluster_indices)
 
     # Plot Mapper graph
     plot_mapper(graph, centroid_positions, cluster_palette)
 
-    # UNFINISHED
-    """
-    triangles = find_triangles(list(graph.edges))
-    
     # Convert to gudhi simplex tree
     simplex_tree = gudhi.SimplexTree()
     for simplex in graph.edges:
         simplex_tree.insert(simplex)
 
-    simplices = [s[0] for s in list(simplex_tree.get_skeleton(2))]
-    
     # Compute persistent homology
-    persistence = simplex_tree.persistence(min_persistence=0.01)
+    persistence = simplex_tree.persistence(persistence_dim_max=True, min_persistence=-1.0)
     diagrams = gudhi.plot_persistence_diagram(persistence)
     plt.show()
-    
+
     # Plot persistent homology diagram
     gudhi.plot_persistence_barcode(persistence)
     plt.show()
-    """
