@@ -62,7 +62,7 @@ def plot_interval_points(pts, colors, order=None):
 
 
 def plot_interval_points_with_clusters(
-    pts, cluster_labels, colors, order=None, markers=None
+        pts, cluster_labels, colors, order=None, markers=None
 ):
     if order is None:
         order = (0, 1, 2)
@@ -92,10 +92,9 @@ def plot_interval_points_with_clusters(
     plt.show()
 
 
-def plot_mapper(graph, palette):
+def plot_mapper(graph, pos, palette):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    pos = nx.spring_layout(graph, dim=3)
     for node, (x, y, z) in pos.items():
         ax.scatter(x, y, z, color=palette[node - 1], s=50, label=str(node))
     for edge in graph.edges():
@@ -214,7 +213,7 @@ def plot_partitions(partitions):
 
 # returns partitions of point cloud with given measurement function
 def partition_data(
-    data, measurement_function="PCA", n_partitions=None, overlap=0.2, plot=False
+        data, measurement_function="PCA", n_partitions=None, overlap=0.2, plot=False
 ):
     measures = apply_measurement_function(data, function=measurement_function)
     partitions, indices = partition(data, measures, n=n_partitions, overlap=overlap)
@@ -265,14 +264,16 @@ def generate_graph(all_clusters, all_cluster_indices):
     # - each cluster is a node
     # - two nodes are connected if their clusters share points
     graph = nx.Graph()
+    positions = {}
     for i in range(len(all_cluster_indices)):
         centroid = np.mean(all_clusters[i], axis=0)
+        positions[i] = np.array(centroid)
         graph.add_node(i, pos=centroid)
         if i > 0:
             for j in range(i):
                 if len(set(all_cluster_indices[i]) & set(all_cluster_indices[j])) > 0:
                     graph.add_edge(i, j)
-    return graph
+    return graph, positions
 
 
 def twin_torus():
@@ -362,10 +363,10 @@ if __name__ == "__main__":
     )
 
     # Generate Mapper graph
-    graph = generate_graph(all_clusters, all_cluster_indices)
+    graph, centroid_positions = generate_graph(all_clusters, all_cluster_indices)
 
     # Plot Mapper graph
-    plot_mapper(graph, cluster_palette)
+    plot_mapper(graph, centroid_positions, cluster_palette)
 
     # UNFINISHED
     """
