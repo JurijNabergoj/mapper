@@ -1,5 +1,8 @@
 Introduction:
-Mapper is one of the most widespread tools of TDA and is used in many different scientific fields. It combines mathematical and machine learning techniques to discern information out of large pools of data. One of the most popular uses is visualisation of data and its transformation into graphs, but in this project we focus on analysing 3D shapes and their Mapper transformations into simplicial 3-complexes.
+Mapper is one of the most widespread tools of TDA and is used in many different scientific fields. 
+It combines mathematical and machine learning techniques to discern information out of large pools of data. 
+One of the most popular uses is visualisation of data and its transformation into graphs, 
+but in this project we focus on analysing 3D shapes and their Mapper transformations into simplicial 3-complexes.
 
 Motivation:
 
