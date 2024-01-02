@@ -6,6 +6,8 @@ from plyfile import PlyData
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN, AgglomerativeClustering
 import math
+import argparse
+from shapely.geometry import Point, Polygon
 
 
 def cluster(data, algorithm="DBSCAN", dbscan_eps=5, dbscan_min_samples=10):
@@ -156,23 +158,23 @@ def set_axes_equal(ax):
 
 
 # plot 3d object
-def plot3d(data):
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
+def plot3d(data, ax):
+    # fig = plt.figure()
+    # ax = plt.axes(projection="3d")
 
     x = data.T[0]
     z = data.T[1]
     y = data.T[2]
 
     ax.scatter(x, y, z, "green")
-    ax.set_title("3D plot")
+    # ax.set_title("3D plot")
     set_axes_equal(ax)
-    plt.show()
+    # plt.show()
 
 
 def twin_torus():
     m = 50
-    n = 20
+    n = 10
     distance = 10
     r_big = distance / 2
     r_small = 2
@@ -199,8 +201,8 @@ def twin_torus():
 
 
 def k_torus(k=1):
-    m = 50
-    n = 15
+    m = 80
+    n = 20
     distance = 10
     r_big = distance / 2
     r_small = 2
@@ -237,7 +239,7 @@ def mapper_algorithm(data, num_rectangles=5, overlap=0.15, algorithm="AC", f="ax
         measurement_function2=g,
         n_partitions=num_rectangles,
         overlap=overlap,
-        plot=True
+        plot=False
     )
     vertices = construct_vertices(data, rectangles, rectangle_indices, algorithm=algorithm)
     edges, edge_mappings = construct_edges(vertices)
@@ -251,7 +253,7 @@ def construct_vertices(data, rectangles, rectangle_indices, algorithm='AC'):
     vertices = {}
 
     for i in range(len(rectangles)):
-        if len(rectangles[i]) == 0:
+        if len(rectangles[i]) < 2:
             continue
         selected_data = data[rectangle_indices[i]]
         labels = cluster(selected_data, algorithm=algorithm)
@@ -282,6 +284,7 @@ def construct_triangles(vertices):
     vertices_keys = list(vertices.keys())
     triangles = []
     triangle_mappings = []
+
     for (i, j) in vertices_keys:
         index_i_j = vertices_keys.index((i, j))
         for (k, l) in vertices_keys[index_i_j:]:
@@ -294,12 +297,14 @@ def construct_triangles(vertices):
                                                    vertices[(m, n)]['data_indices'])) > 0 and
                                     len(np.intersect1d(vertices[(k, l)]['data_indices'],
                                                        vertices[(m, n)]['data_indices'])) > 0):
-                                triangles.append((
+                                triangle = (
                                     vertices[(i, j)]['center'],
                                     vertices[(k, l)]['center'],
                                     vertices[(m, n)]['center']
-                                ))
+                                )
+                                triangles.append(triangle)
                                 triangle_mappings.append([(i, j)] + [(k, l)] + [(m, n)])
+
     return triangles, triangle_mappings
 
 
@@ -340,7 +345,37 @@ def construct_tetrahedra(vertices):
     return tetrahedra, tetrahedra_mappings
 
 
-def plot_result(vertices, edges, triangles, tetrahedra):
+def plot_results(object, ax):
+    # fig, axes = plt.subplots(1, num_objects, subplot_kw={'projection': '3d'}, figsize=(15, 5))
+
+    # ax = axes[idx]
+    (vertices, edges, triangles) = object
+    triangle_colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta']
+
+    for i, triangle in enumerate(triangles):
+        triangle = np.array(triangle)
+        r = [np.random.uniform(-1e-5, 1e-5), np.random.uniform(-1e-5, 1e-5), np.random.uniform(-1e-5, 1e-5)]
+        ax.plot_trisurf(triangle[:, 0] + r,
+                        triangle[:, 1] + r,
+                        [0, 0, 0], color=triangle_colors[i % len(triangle_colors)],
+                        alpha=0.4)
+
+    for vertex in vertices.values():
+        ax.scatter(vertex['center'][0], vertex['center'][1], 0, c='r', marker='o')
+
+    for edge in edges:
+        ax.plot([edge[0][0], edge[1][0]], [edge[0][1], edge[1][1]], [0, 0], c='red')
+
+    # ax.set_title(f'Object {idx + 1}')
+    # ax.set_xlabel("X-axis")
+    # ax.set_ylabel("Y-axis")
+    # ax.set_zlabel("Z-axis")
+
+    plt.tight_layout()
+    # plt.show()
+
+
+def plot_result(vertices, edges, triangles):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -348,27 +383,27 @@ def plot_result(vertices, edges, triangles, tetrahedra):
         ax.scatter(vertex['center'][0], vertex['center'][1], 0, c='r', marker='o')
 
     for edge in edges:
-        ax.plot([edge[0][0], edge[1][0]], [edge[0][1], edge[1][1]], [0, 0], c='b')
+        ax.plot([edge[0][0], edge[1][0]], [edge[0][1], edge[1][1]], [0, 0], c='red')
 
-    for triangle in triangles:
-        triangle = np.concatenate((triangle, [triangle[0]]))  # Close the triangle
-        ax.plot(triangle[:, 0], triangle[:, 1], [0, 0, 0, 0], c='g')
+    triangle_colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta']
 
-    for tetrahedron in tetrahedra:
-        tetrahedron = np.concatenate((tetrahedron, [tetrahedron[0]]))  # Close the tetrahedron
-        ax.plot(tetrahedron[:, 0], tetrahedron[:, 1], [0, 0, 0, 0, 0], c='m')
+    for i, triangle in enumerate(triangles):
+        triangle = np.array(triangle)
+        r = [np.random.uniform(-1e-5, 1e-5), np.random.uniform(-1e-5, 1e-5), np.random.uniform(-1e-5, 1e-5)]
+        ax.plot_trisurf(triangle[:, 0] + r,
+                        triangle[:, 1] + r,
+                        [0, 0, 0], color=triangle_colors[i % len(triangle_colors)],
+                        alpha=0.4)
 
-    ax.set_title('Mapper Simplicial complex')
-    ax.set_xlabel("X-axis")
-    ax.set_ylabel("Y-axis")
-    ax.set_zlabel("Z-axis")
+    # ax.plot_trisurf(triangle[:, 0], triangle[:, 1], [0, 0, 0], color=triangle_colors[i % len(triangle_colors)],
+    # alpha=0.4) ax.set_title('Mapper Simplicial complex') ax.set_xlabel("X-axis") ax.set_ylabel("Y-axis")
+    # ax.set_zlabel("Z-axis")
     plt.tight_layout()
     plt.show()
 
 
 def map_simplices(vertices, edge_mappings, triangle_mappings, tetrahedra_mappings):
     vertex_to_ind = {vertex: i for i, vertex in enumerate(vertices)}
-
     mapped_vertices = [vertex_to_ind[v] for v in list(vertices.keys())]
     mapped_edges = [(vertex_to_ind[e1], vertex_to_ind[e2]) for (e1, e2) in edge_mappings]
     mapped_triangles = [(vertex_to_ind[e1], vertex_to_ind[e2], vertex_to_ind[e3]) for (e1, e2, e3) in triangle_mappings]
@@ -377,34 +412,116 @@ def map_simplices(vertices, edge_mappings, triangle_mappings, tetrahedra_mapping
     return mapped_vertices, mapped_edges, mapped_triangles, mapped_tetrahedra
 
 
-if __name__ == "__main__":
-    table = read3d("data/table.ply", density=0.2, resize=0.15)
-    data = join_shapes(k_torus(1), table, np.array([0, -10, 0]), np.array([0, 10, 0]))
-    plot3d(data)
-    vertices, edges, triangles, tetrahedra, edge_mappings, triangle_mappings, tetrahedra_mappings = mapper_algorithm(
-        data, num_rectangles=10, algorithm="AC", f="axis0", g="axis1")
-    plot_result(vertices, edges, triangles, tetrahedra)
-    mapped_vertices, mapped_edges, mapped_triangles, mapped_tetrahedra = map_simplices(vertices, edge_mappings,
-                                                                                       triangle_mappings,
-                                                                                       tetrahedra_mappings)
-    # Construct the simplex tree
-    # Tukej nevem tocno kaj nej bi bil filtration value za vsak simplex zato sm dal: dim + random value.
-    # Kaj bi ti dal?
+def construct_simplex_tree(edges, triangles, tetrahedra):
     simplex_tree = gudhi.SimplexTree()
-    for simplex in mapped_edges:
-        simplex_tree.insert(simplex, filtration=np.random.rand())
-    for simplex in mapped_triangles:
-        simplex_tree.insert(simplex, filtration=1 + np.random.rand())
-    for simplex in mapped_tetrahedra:
-        simplex_tree.insert(simplex, filtration=2 + np.random.rand())
+    for simplex in edges:
+        simplex_tree.insert(simplex)
+    for simplex in triangles:
+        simplex_tree.insert(simplex)
+    for simplex in tetrahedra:
+        simplex_tree.insert(simplex)
+    return simplex_tree
 
+
+def plot_persistence(simplex_tree):
     # Compute persistent homology
-    persistence = simplex_tree.persistence(min_persistence=-1.0, persistence_dim_max=True)
+    persistence = simplex_tree.persistence(min_persistence=0, persistence_dim_max=False)
     diagrams = gudhi.plot_persistence_diagram(persistence)
     plt.tight_layout()
+    plt.legend()
     plt.show()
 
     # Plot persistent homology diagram
     gudhi.plot_persistence_barcode(persistence)
     plt.tight_layout()
+    plt.legend()
     plt.show()
+
+
+def plot_objects_and_scxs():
+    data1 = read3d('data/cup.ply', density=0.05, resize=1)
+    data2 = read3d('data/table.ply', density=0.05, resize=1)
+    data3 = k_torus(1)
+    objects = [data1, data2, data3]
+    overlaps = [0.6, 0.5, 0.75]
+
+    scxs = []
+    for i, object in enumerate(objects):
+        overlap = overlaps[i]
+        vertices, edges, triangles, tetrahedra, edge_mappings, triangle_mappings, tetrahedra_mappings = mapper_algorithm(
+            object, num_rectangles=10, overlap=overlap, algorithm=clustering_alg, f="axis0", g="axis2")
+        scx = [vertices, edges, triangles]
+        scxs.append(scx)
+
+    fig = plt.figure(figsize=(15, 10))
+    # Top row: plot3d
+    ax1 = fig.add_subplot(2, 3, 1, projection='3d')
+    ax2 = fig.add_subplot(2, 3, 2, projection='3d')
+    ax3 = fig.add_subplot(2, 3, 3, projection='3d')
+
+    plot3d(data1, ax1)
+    plot3d(data2, ax2)
+    plot3d(data3, ax3)
+
+    # Bottom row: plot_results
+    ax4 = fig.add_subplot(2, 3, 4, projection='3d')
+    ax5 = fig.add_subplot(2, 3, 5, projection='3d')
+    ax6 = fig.add_subplot(2, 3, 6, projection='3d')
+
+    plot_results(scxs[0], ax4)
+    plot_results(scxs[1], ax5)
+    plot_results(scxs[2], ax6)
+    plt.show()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--object', type=str)
+    parser.add_argument('--partitions', type=int)
+    parser.add_argument('--clustering', type=str)
+
+    args = parser.parse_args()
+    if args.object == 'torus1':
+        data = k_torus(1)
+    elif args.object == 'torus2':
+        data = twin_torus()
+    elif args.object == 'cup':
+        data = read3d('data/cup.ply', density=0.15, resize=1)
+    elif args.object == 'table':
+        data = read3d('data/table.ply', density=0.15, resize=1)
+    else:
+        raise ValueError('Object is required.')
+    n_partitions = args.partitions
+    clustering_alg = args.clustering
+
+    n = 18
+    accumulated_simplex_tree = gudhi.SimplexTree()
+    overlap = 0
+
+    for i in range(n):
+        print(i)
+        vertices, edges, triangles, tetrahedra, edge_mappings, triangle_mappings, tetrahedra_mappings = mapper_algorithm(
+            data, num_rectangles=7, overlap=overlap, algorithm=clustering_alg, f="axis1", g="axis2")
+        # plot_result(vertices, edges, triangles)
+        mapped_vertices, mapped_edges, mapped_triangles, mapped_tetrahedra = map_simplices(vertices, edge_mappings,
+                                                                                           triangle_mappings,
+                                                                                           tetrahedra_mappings)
+        scx = [mapped_edges, mapped_triangles, mapped_tetrahedra]
+        for simplicial_complex in scx:
+            for simplex in simplicial_complex:
+                # if not accumulated_simplex_tree.find(simplex):
+                accumulated_simplex_tree.insert(simplex, filtration=overlap)
+        overlap = overlap + 1 / n
+
+    plot_persistence(accumulated_simplex_tree)
+    betti_numbers = accumulated_simplex_tree.betti_numbers()
+    print(f"{betti_numbers = }")
+
+    # TORUS 1 (80, 20) (betti numbers should be (1,2,1) -> we get (1,2,3))
+    # n=18, python mapper3D.py --object="torus1" --partitions=7 --clustering="AC"
+
+    # TORUS 2 (betti numbers should be (1,4,1))
+    # n=18, python mapper3D.py --object="torus2" --partitions=7 --clustering="AC"
+
+    # plot_objects_and_scxs()

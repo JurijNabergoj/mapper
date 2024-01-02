@@ -1,0 +1,69 @@
+Introduction:
+...
+
+Motivation:
+
+TDA is premised on the idea that the shape of data sets contains relevant information.
+When faced with unknown data, we often want to look for topological similarities to already known topological structures,
+or compare different datasets to better understand their properties.
+We may want to simplify and visualize data or use methods to analyze its topological features.
+The problem is that in many cases, data coming from real applications is massive and it is not possible to visualize and discern structure even in low dimensional projections.
+
+As an example consider the data being collected by the Oceanic Metagenomics collection [DAG∗07], [SGD∗07],
+which has many millions of protein sequences which are very difficult to analyze due to the volume of the data. 
+
+Another example is the database of patches in natural images studied in [LPM03]. This data set also has millions
+of points and is known to have a simple structure which is obscured due to its immense size.
+
+For this reason, we use a method that reduces high dimensional data sets into simplicial complexes with far fewer
+points. This way we can capture topological and geometric information at a specified resolution. This method is reffered to as Mapper and typically outputs a 1-dimensional simplicial complex
+i.e. a planar graph with vertices and edges. The 3D Mapper algorithm is very similar but tailored to produce higher dimensional simplicial complexes on which we can then compute persistent homology
+and learn more about the homological features of data.
+
+Mapper Algorithm:
+
+Given a point cloud, the basic steps behind Mapper are as follows:
+Map points to a lower-dimensional space using a filter function f. Common choice for the filter function is projection onto an axis via PCA. 
+Then construct a cover of the projected space typically in the form of a set of overlapping intervals which have constant length.
+For each interval, take the preimage of the projected points i.e. the original n-dimensional points in that interval, and cluster them into groups. 
+Lastly, construct a graph whose vertices are the cluster sets and an edge exists between two vertices if two clusters share some points in common.
+
+3D Mapper Algorithm:
+
+Using a single function as a filter, the output of the mapper algorithm is a complex in which the highest dimension of simplices is 1 (edges
+in a graph). The main information we get out of this is the number of components of said graph. To
+get information about higher dimensional holes in the data one would need to build a higher dimensional complex.
+This can be accomplished using more filter functions on the data.
+In our case, we use 2 filter functions and thus need rectangles to cover the range of these functions.
+
+The dimensionality of the resulting simplicial complex is determined by the number of regions where the coverings intersect. 
+In case of intervals, at most 2 coverings will intersect, thus the simplices constituting the simplicial complex will have at most dimension 2.
+In case of rectangles, there are regions where 4 rectangles intersect. Thus, the dimension of simplices which we use to construct the complex will be at most 4 and our resulting simplicial complex will be 4-dimensional.
+
+Parameters:
+
+The parameters we have to select to run the Mapper algorithm are the filter functions, the number of covers (or rectangles) we use to partition the data, their overlap percentage, and the clustering scheme.
+Our choice for the 2 filter functions were simply keeping the 1st and 2nd axis of the original 3d point cloud. We experimented with different numbers of covers in range (3,10) and different percentage of overlap.
+The clustering schemes we used were DBSCAN and Agglomerative Clustering from sklearn.
+
+Results:
+
+...
+
+Computing persistent homology:
+
+We compute persistence of our simplicial complex by changing the overlap percentage of rectangles over time.
+At time 0 we set the overlap percentage to 0, and the simplicial complex contains only vertices as no coverings (rectangles) intersect.
+Over time we increase the overlap percentage to allow higher dimensional structures to form.
+
+We do this until we form n simplicial complexes with increasing overlap and then compute their persistent homology. Results are:
+
+The persistence diagram shows us the which homological features persist through evolution.
+For a torus we see that the number of connected components is 1, the number of 1-dim holes is 2, and number of 2-holes (voids) is 1...
+
+Conclusion:
+...
+
+
+
+
