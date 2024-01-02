@@ -51,7 +51,7 @@ The clustering schemes we used were DBSCAN and Agglomerative Clustering from skl
 
 Results:
 
-...
+We show an example of a few 3D shapes (cup, table and torus)
 
 Computing persistent homology:
 
