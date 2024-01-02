@@ -65,7 +65,13 @@ The persistence diagram shows us the which homological features persist through 
 For a torus we see that the number of connected components is 1, the number of 1-dim holes is 2, and number of 2-holes (voids) is 1...
 
 Conclusion:
-...
+
+The Mapper algorithm transforms a point cloud into a simplicial 1-complex (graphs)​, whereas
+the 3D Mapper algorithm transforms a point cloud into a simplicial 3-complex​.
+
+The output of 3D Mapper us highly dependent on  algorithm parameters​.
+We implement the 3D Mapper algorithm, test it on different shapes​
+and compute persistent homology of the 3D Mapper output.
 
 
 
